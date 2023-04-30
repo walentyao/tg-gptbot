@@ -31,6 +31,9 @@ class Bot {
             }
             console.log("Bot started");
             await this.bot.launch();
+
+            process.once('SIGINT', () => this.bot.stop('SIGINT'));
+            process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
         } catch (e: any) {
             console.log("Bot failed ", e.message);
         }
