@@ -46,8 +46,7 @@ export class ListChatCommand extends Command {
                                 await ctx.reply(message.content)
                             else await ctx.reply(code(message.content))
                         }
-                    }
-                    await ctx.editMessageText("Чат: Без названия");
+                    }else await ctx.editMessageText("Чат: Без названия");
                     ctx.session = {
                         messages: chat.messages,
                         chatId: chat._id.toString()
