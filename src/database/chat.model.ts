@@ -1,4 +1,5 @@
 import {Schema, model, Types} from 'mongoose';
+import {IUser} from "./user.model";
 
 export enum RoleMessage {
     System = "system",
@@ -14,10 +15,12 @@ export interface IMessage {
 
 export interface IChat {
     messages: Array<IMessage>;
+    userId:Types.ObjectId;
 }
 
 const schema = new Schema<IChat>({
-    messages:[]
+    messages:[],
+    userId:{type:Schema.Types.ObjectId, ref:'User'}
 });
 
 export const ChatModel = model('Chat', schema);

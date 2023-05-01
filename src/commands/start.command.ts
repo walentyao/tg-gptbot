@@ -1,10 +1,10 @@
 import {Command} from "./command.class";
-import {Context, Telegraf} from "telegraf";
-import {Markup} from 'telegraf';
+import { Telegraf} from "telegraf";
 import {IBotContext} from "../context/context.interface";
-import {IUser, UserModel} from "../database/user.model";
-import {ChatModel} from "../database/chat.model";
+
 import {code} from "telegraf/format";
+import {databaseService} from "../database/database.service";
+
 export class StartCommand extends Command {
 
     constructor(bot: Telegraf<IBotContext>) {
@@ -14,33 +14,28 @@ export class StartCommand extends Command {
     handle(): void {
         try {
             this.bot.start(async (ctx) => {
-                const user = {
-                    firstname: ctx.update.message.from.first_name,
-                    telegramId: ctx.update.message.from.id.toString(),
-                    username: ctx.update.message.from.username
-                } as IUser;
 
-                const findUser = await UserModel.findOne({username: user.username});
+                const user = await databaseService.findUserById(ctx.update.message.from.id.toString())
 
-                if (findUser) {
-                    const newChat = await ChatModel.create({messages: []});
-                    newChat.save();
-                    ctx.session = {
-                      messages:newChat.messages,
-                      chatId:newChat.id
-                    };
-                    findUser.chats.push(newChat);
-                    findUser.save();
+                if (user) {
+                    const newChat = await databaseService.createChat(ctx.update.message.from.id.toString());
+                    if (newChat)
+                        ctx.session = {
+                            messages: newChat.messages,
+                            chatId: newChat._id.toString()
+                        };
                 } else {
-                    const newUser = await UserModel.create(user);
-                    const newChat = await ChatModel.create({messages: []});
-                    newChat.save();
-                    ctx.session = {
-                        messages:newChat.messages,
-                        chatId:newChat.id
-                    };
-                    newUser.chats.push(newChat);
-                    newUser.save();
+                    const newUser = await databaseService.createUser({
+                        username: ctx.update.message.from.username,
+                        telegramId: ctx.update.message.from.id.toString(),
+                        firstname: ctx.update.message.from.first_name
+                    });
+                    const newChat = await databaseService.createChat(newUser.telegramId);
+                    if (newChat)
+                        ctx.session = {
+                            messages: newChat.messages,
+                            chatId: newChat._id.toString()
+                        };
                 }
 
                 await ctx.reply(code('Жду вашего голосового или текстового сообщения :)'));

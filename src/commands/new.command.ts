@@ -1,35 +1,28 @@
 import {Command} from "./command.class";
 import {Telegraf} from "telegraf";
 import {IBotContext} from "../context/context.interface";
-import {IUser, UserModel} from "../database/user.model";
-import {ChatModel} from "../database/chat.model";
+
 import {code} from "telegraf/format";
+import {databaseService} from "../database/database.service";
 
-export class NewCommand extends Command{
+export class NewCommand extends Command {
 
-    constructor(bot:Telegraf<IBotContext>) {
+    constructor(bot: Telegraf<IBotContext>) {
         super(bot);
     }
+
     handle(): void {
-        this.bot.command("new",async (ctx)=>{
-            const user = {
-                firstname: ctx.update.message.from.first_name,
-                telegramId: ctx.update.message.from.id.toString(),
-                username: ctx.update.message.from.username
-            } as IUser;
+        this.bot.command("new", async (ctx) => {
 
-            const findUser = await UserModel.findOne({username: user.username});
+            const user = await databaseService.findUserById(ctx.update.message.from.id.toString());
 
-            if (findUser) {
-                const newChat = await ChatModel.create({messages: []});
-                newChat.save();
-                console.log(newChat.messages)
-                ctx.session = {
-                    messages:newChat.messages,
-                    chatId:newChat.id
-                };
-                findUser.chats.push(newChat);
-                findUser.save();
+            if (user) {
+                const newChat = await databaseService.createChat(user.telegramId);
+                if (newChat)
+                    ctx.session = {
+                        messages: newChat.messages,
+                        chatId: newChat._id.toString()
+                    };
             }
             ctx.reply(code("Жду вопроса :)"))
         });

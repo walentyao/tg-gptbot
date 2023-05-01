@@ -3,9 +3,8 @@ import {Markup, Telegraf} from "telegraf";
 import {IBotContext} from "../context/context.interface";
 import {ChatModel} from "../database/chat.model";
 import {UserModel} from "../database/user.model";
-import {message} from "telegraf/filters";
 import {code} from "telegraf/format";
-import {log} from "util";
+import {databaseService} from "../database/database.service";
 
 export class ListChatCommand extends Command {
 
@@ -16,18 +15,18 @@ export class ListChatCommand extends Command {
     handle(): void {
         this.bot.command("listchat", async (ctx) => {
             try {
-                const user = await UserModel.findOne({username: ctx.from.username}).populate("chats");
-                if (user) {
-                    const buttons = user.chats.map((chat) => {
-                        return Markup.button.callback(`${chat.messages[0]?.content ?? "Без названия"}`, `selectedchat:${chat._id}`);
+                const chats = await databaseService.findChatsByIdUser(ctx.update.message.from.id.toString());
+                if (chats.length > 1) {
+                    const buttons = chats.map((chat) => {
+                        const chatName = chat.messages.length > 0 ? chat.messages[0].content : "Без названия";
+                        return Markup.button.callback(`${chatName}`, `selectedchat:${chat._id}`);
                     });
                     const keyboard = Markup.inlineKeyboard(buttons.map((element) => [element]))
                     ctx.reply("Список чатов:",
                         keyboard
                     )
-                }
-            }
-            catch (e:any) {
+                } else ctx.reply(code("У вас пока только один чат"));
+            } catch (e: any) {
                 console.log("Error listchat command", e.message);
                 await ctx.reply(code("Что-то на сервере барахлит =("));
             }
@@ -38,20 +37,24 @@ export class ListChatCommand extends Command {
                 // @ts-ignore
                 const data = ctx.update.callback_query.data as string;
                 const chatId = data.split(':')[1];
-                const chat = await ChatModel.findById(chatId);
+                const chat = await databaseService.findChatById(chatId);
                 if (chat) {
-                    ctx.editMessageText(`Чат \n:${chat.messages[0].content}`)
-                    chat.messages.forEach((message) => {
-                        if (message.role === "user")
-                            ctx.reply(message.content)
-                        else ctx.reply(code(message.content))
-                    });
+                    if (chat.messages.length > 0){
+                        await ctx.editMessageText(`Чат: ${chat.messages[0].content}`)
+                        for (let message of chat.messages) {
+                            if (message.role === "user")
+                                await ctx.reply(message.content)
+                            else await ctx.reply(code(message.content))
+                        }
+                    }
+                    await ctx.editMessageText("Чат: Без названия");
                     ctx.session = {
                         messages: chat.messages,
                         chatId: chat._id.toString()
                     }
+                    await ctx.reply(code("Жду вопроса =)"));
                 }
-            } catch (e:any) {
+            } catch (e: any) {
                 console.log("Error listchat command", e.message);
                 await ctx.editMessageText("Что-то на сервере барахлит =(");
             }
