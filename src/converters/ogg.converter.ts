@@ -12,7 +12,7 @@ class OggConverter {
     toMp3(input:string, output:string) {
         try {
             const outputPath = resolve(dirname(input), `${output}.mp3`)
-            return new Promise((resolve, reject) => {
+            return new Promise<string>((resolve, reject) => {
                 ffmpeg(input)
                     .inputOption('-t 30')
                     .output(outputPath)
@@ -33,7 +33,7 @@ class OggConverter {
                 url,
                 responseType: 'stream',
             })
-            return new Promise((resolve) => {
+            return new Promise<string>((resolve) => {
                 const stream = createWriteStream(oggPath)
                 response.data.pipe(stream)
                 stream.on('finish', () => resolve(oggPath))
